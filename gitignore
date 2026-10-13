@@ -1,0 +1,17 @@
+# Secrets
+.env
+
+# Environnement Python
+venv/
+__pycache__/
+*.pyc
+
+# Base vectorielle generee (se reconstruit avec indexer.py)
+base_juridique/
+
+# PDF des textes juridiques (volumineux) : decommente pour les exclure
+# textes_juridiques/*.pdf
+
+# Divers
+.vscode/
+.DS_Store

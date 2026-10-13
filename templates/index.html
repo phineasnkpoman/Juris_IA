@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JurisIA</title>
+<meta name="description" content="JurisIA, l'assistant qui rend le droit ivoirien accessible à tous.">
+<style>
+:root {
+  --vert-900: #0b3d2e;
+  --vert-700: #11634a;
+  --vert-600: #178060;
+  --vert-100: #e3f2ea;
+  --orange-600: #c75a00;
+  --orange-500: #ee7d1a;
+  --orange-100: #fff0e0;
+  --fond: #faf7f1;
+  --carte: #ffffff;
+  --encre: #1c2a24;
+  --encre-douce: #526159;
+  --ligne: #e5e0d4;
+  --danger: #b3261e;
+  --ombre: 0 1px 2px rgba(11,61,46,.08), 0 6px 20px rgba(11,61,46,.07);
+  --rayon: 16px;
+  --police: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --police-titre: Georgia, "Times New Roman", serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --vert-100: #12392c;
+    --orange-100: #3a2a18;
+    --fond: #0e1713;
+    --carte: #16231d;
+    --encre: #eef3ef;
+    --encre-douce: #a9b9b0;
+    --ligne: #263a31;
+    --ombre: 0 1px 2px rgba(0,0,0,.4), 0 6px 20px rgba(0,0,0,.3);
+  }
+}
+:root[data-theme="dark"] {
+  --vert-100: #12392c;
+  --orange-100: #3a2a18;
+  --fond: #0e1713;
+  --carte: #16231d;
+  --encre: #eef3ef;
+  --encre-douce: #a9b9b0;
+  --ligne: #263a31;
+  --ombre: 0 1px 2px rgba(0,0,0,.4), 0 6px 20px rgba(0,0,0,.3);
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--fond);
+  color: var(--encre);
+  font-family: var(--police);
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+button, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--orange-500); outline-offset: 2px; border-radius: 8px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.ico { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+/* ---------- Structure ---------- */
+.app { display: flex; flex-direction: column; height: 100dvh; max-width: 1080px; margin: 0 auto; }
+.entete {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 20px; flex: none;
+}
+.logo { display: flex; align-items: center; gap: 10px; }
+.logo svg.mascotte { width: 44px; height: 44px; }
+.logo-texte { font-family: var(--police-titre); font-size: 1.45rem; font-weight: 700; color: var(--vert-900); letter-spacing: -.01em; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .logo-texte { color: #cfe9dc; } }
+.logo-texte b { color: var(--orange-600); font-weight: 700; }
+.drapeau { display: flex; height: 6px; width: 54px; border-radius: 3px; overflow: hidden; margin-left: 4px; }
+.drapeau i { flex: 1; }
+.drapeau i:nth-child(1) { background: #f77f00; }
+.drapeau i:nth-child(2) { background: #fff; border-block: 1px solid var(--ligne); }
+.drapeau i:nth-child(3) { background: #009e60; }
+.espace { flex: 1; }
+.btn-icone {
+  min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  background: transparent; border: 1px solid var(--ligne); border-radius: 12px; padding: 0 12px; color: var(--encre-douce);
+}
+.btn-icone:hover { background: var(--vert-100); color: var(--vert-900); }
+
+/* ---------- Onglets ---------- */
+.onglets { display: flex; gap: 6px; padding: 0 20px 10px; flex: none; }
+.onglet {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px;
+  border: 1px solid transparent; background: transparent; border-radius: 999px; color: var(--encre-douce); font-weight: 600;
+  transition: background-color .18s ease, color .18s ease;
+}
+.onglet:hover { background: var(--vert-100); color: var(--vert-900); }
+.onglet[aria-selected="true"] { background: var(--vert-700); color: #fff; }
+.principal { flex: 1; min-height: 0; position: relative; padding: 0 20px 16px; display: flex; flex-direction: column; }
+.panneau { display: none; flex: 1; min-height: 0; flex-direction: column; }
+.panneau.actif { display: flex; animation: entrer .22s ease-out; }
+@keyframes entrer { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* ---------- Chat ---------- */
+.chat-carte {
+  flex: 1; min-height: 0; display: flex; flex-direction: column;
+  background: var(--carte); border: 1px solid var(--ligne); border-radius: var(--rayon); box-shadow: var(--ombre); overflow: hidden;
+}
+.fil { flex: 1; min-height: 0; overflow-y: auto; padding: 20px; scroll-behavior: smooth; }
+.accueil { text-align: center; padding: 8px 8px 4px; }
+.accueil svg.mascotte { width: 96px; height: 96px; }
+.accueil h1 { font-family: var(--police-titre); font-size: clamp(1.5rem, 4vw, 2rem); line-height: 1.2; margin: 8px 0 6px; color: var(--vert-900); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .accueil h1 { color: #cfe9dc; } }
+.accueil p { margin: 0 auto 16px; color: var(--encre-douce); max-width: 520px; }
+.pastilles { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.pastille {
+  min-height: 44px; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--ligne); background: var(--fond);
+  color: var(--encre); text-align: left; transition: border-color .15s, background-color .15s;
+}
+.pastille:hover { border-color: var(--vert-600); background: var(--vert-100); }
+
+.msg { display: flex; gap: 10px; margin: 14px 0; align-items: flex-start; }
+.msg.moi { flex-direction: row-reverse; }
+.msg .avatar { width: 36px; height: 36px; flex: none; }
+.bulle { max-width: min(640px, 86%); padding: 12px 16px; border-radius: 18px; overflow-wrap: anywhere; }
+.moi .bulle { background: var(--vert-700); color: #fff; border-bottom-right-radius: 6px; }
+.bot .bulle { background: var(--fond); border: 1px solid var(--ligne); border-bottom-left-radius: 6px; }
+.bulle p { margin: 0 0 .6em; }
+.bulle p:last-child { margin-bottom: 0; }
+.bulle ul, .bulle ol { margin: .3em 0 .6em; padding-left: 1.25em; }
+.sources { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; align-items: center; font-size: .82rem; color: var(--encre-douce); }
+.source {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px;
+  background: var(--orange-100); color: var(--orange-600); font-weight: 600; max-width: 100%;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .source { color: #ffb36b; } }
+.source span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.avertissement-bulle { margin-top: 10px; font-size: .8rem; color: var(--encre-douce); border-top: 1px dashed var(--ligne); padding-top: 8px; }
+.erreur .bulle { border-color: var(--danger); }
+.point-attente { display: inline-flex; gap: 5px; padding: 4px 0; }
+.point-attente i { width: 8px; height: 8px; border-radius: 50%; background: var(--vert-600); animation: rebond 1s infinite ease-in-out; }
+.point-attente i:nth-child(2) { animation-delay: .15s; }
+.point-attente i:nth-child(3) { animation-delay: .3s; }
+@keyframes rebond { 0%, 80%, 100% { transform: translateY(0); opacity: .5; } 40% { transform: translateY(-5px); opacity: 1; } }
+
+.composeur { border-top: 1px solid var(--ligne); padding: 12px; background: var(--carte); }
+.theme-actif {
+  display: none; align-items: center; gap: 8px; margin: 0 4px 10px; padding: 6px 6px 6px 12px; width: fit-content; max-width: 100%;
+  background: var(--vert-100); color: var(--vert-900); border-radius: 999px; font-size: .9rem; font-weight: 600;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .theme-actif { color: #cfe9dc; } }
+.theme-actif.visible { display: inline-flex; }
+.theme-actif button { width: 32px; height: 32px; border-radius: 50%; border: 0; background: rgba(0,0,0,.08); display: inline-flex; align-items: center; justify-content: center; }
+.ligne-saisie { display: flex; gap: 8px; align-items: flex-end; }
+textarea#saisie {
+  flex: 1; resize: none; max-height: 140px; min-height: 48px; padding: 12px 14px; border-radius: 14px;
+  border: 1px solid var(--ligne); background: var(--fond); line-height: 1.4;
+}
+textarea#saisie:focus { border-color: var(--vert-600); outline: 3px solid color-mix(in srgb, var(--vert-600) 30%, transparent); outline-offset: 0; }
+.envoyer {
+  min-width: 48px; min-height: 48px; border: 0; border-radius: 14px; background: var(--orange-600); color: #fff;
+  display: inline-flex; align-items: center; justify-content: center; transition: background-color .15s, transform .1s;
+}
+.envoyer:hover { background: #a94b00; }
+.envoyer:active { transform: scale(.96); }
+.envoyer:disabled { background: var(--ligne); color: var(--encre-douce); cursor: not-allowed; }
+.mention { margin: 8px 4px 0; font-size: .8rem; color: var(--encre-douce); text-align: center; }
+
+/* ---------- Voix ---------- */
+.micro {
+  min-width: 48px; min-height: 48px; border-radius: 14px; border: 1px solid var(--ligne); background: var(--fond);
+  color: var(--vert-700); display: inline-flex; align-items: center; justify-content: center;
+  transition: background-color .15s, color .15s, border-color .15s;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .micro { color: #7fd1ad; } }
+.micro:hover { background: var(--vert-100); }
+.micro.ecoute { background: var(--danger); border-color: var(--danger); color: #fff; animation: pouls 1.4s infinite; }
+.micro.indispo { opacity: .55; }
+.micro:disabled { opacity: .45; cursor: not-allowed; }
+@keyframes pouls {
+  0% { box-shadow: 0 0 0 0 rgba(179,38,30,.45); }
+  70% { box-shadow: 0 0 0 12px rgba(179,38,30,0); }
+  100% { box-shadow: 0 0 0 0 rgba(179,38,30,0); }
+}
+.etat-voix { display: none; align-items: center; gap: 8px; margin: 0 4px 10px; font-size: .92rem; color: var(--encre-douce); }
+.etat-voix.visible { display: flex; }
+.etat-voix.ecoute { color: var(--encre); font-weight: 600; }
+.etat-voix.ecoute::before { content: ""; flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--danger); animation: rebond 1s infinite; }
+.btn-icone[aria-pressed="true"] { background: var(--vert-700); border-color: var(--vert-700); color: #fff; }
+.actions-msg { margin-top: 10px; }
+.btn-ecouter {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; border-radius: 999px;
+  border: 1px solid var(--vert-600); background: transparent; color: var(--vert-700); font-weight: 600; font-size: .9rem;
+}
+.btn-ecouter:hover { background: var(--vert-100); }
+.btn-ecouter[aria-pressed="true"] { background: var(--vert-700); color: #fff; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .btn-ecouter:not([aria-pressed="true"]) { color: #7fd1ad; } }
+
+/* ---------- Thèmes ---------- */
+.defile { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 8px; }
+.titre-section { font-family: var(--police-titre); font-size: 1.5rem; margin: 4px 0 4px; }
+.sous-titre { margin: 0 0 16px; color: var(--encre-douce); }
+.grille { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
+.carte-theme {
+  text-align: left; background: var(--carte); border: 1px solid var(--ligne); border-radius: var(--rayon);
+  padding: 18px; display: flex; flex-direction: column; gap: 8px; min-height: 44px;
+  box-shadow: var(--ombre); transition: transform .18s ease, border-color .18s ease;
+}
+.carte-theme:hover { transform: translateY(-3px); border-color: var(--vert-600); }
+.carte-theme .pastille-ico { width: 46px; height: 46px; border-radius: 14px; display: inline-flex; align-items: center; justify-content: center; background: var(--vert-100); color: var(--vert-700); }
+.carte-theme:nth-child(even) .pastille-ico { background: var(--orange-100); color: var(--orange-600); }
+.carte-theme h3 { margin: 4px 0 0; font-size: 1.05rem; }
+.carte-theme p { margin: 0; color: var(--encre-douce); font-size: .92rem; }
+.carte-theme .aller { margin-top: auto; font-weight: 600; color: var(--vert-700); font-size: .9rem; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .carte-theme .aller { color: #7fd1ad; } }
+
+/* ---------- Repères ---------- */
+.accordeon { display: grid; gap: 10px; max-width: 760px; }
+details.repere { background: var(--carte); border: 1px solid var(--ligne); border-radius: var(--rayon); box-shadow: var(--ombre); }
+details.repere summary {
+  list-style: none; cursor: pointer; padding: 14px 18px; min-height: 52px; display: flex; align-items: center; gap: 12px; font-weight: 600;
+}
+details.repere summary::-webkit-details-marker { display: none; }
+details.repere summary::after { content: ""; margin-left: auto; width: 10px; height: 10px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); transition: transform .2s; }
+details.repere[open] summary::after { transform: rotate(-135deg); }
+.repere-corps { padding: 0 18px 16px; color: var(--encre); }
+.repere-corps ul { margin: 0 0 12px; padding-left: 1.2em; }
+.repere-corps li { margin-bottom: 4px; }
+.btn-secondaire {
+  min-height: 44px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--vert-600); background: transparent; color: var(--vert-700); font-weight: 600;
+}
+.btn-secondaire:hover { background: var(--vert-100); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .btn-secondaire { color: #7fd1ad; } }
+.btn-principal { min-height: 48px; padding: 0 22px; border-radius: 14px; border: 0; background: var(--orange-600); color: #fff; font-weight: 700; }
+.btn-principal:hover { background: #a94b00; }
+
+/* ---------- À propos ---------- */
+.apropos { max-width: 720px; }
+.encadre { background: var(--orange-100); border-left: 4px solid var(--orange-500); border-radius: 12px; padding: 14px 16px; margin: 16px 0; }
+.etapes { display: grid; gap: 12px; margin: 16px 0; padding: 0; list-style: none; counter-reset: e; }
+.etapes li { counter-increment: e; display: flex; gap: 12px; align-items: flex-start; }
+.etapes li::before { content: counter(e); flex: none; width: 30px; height: 30px; border-radius: 50%; background: var(--vert-700); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; }
+
+/* ---------- Onboarding ---------- */
+.voile { position: fixed; inset: 0; background: rgba(8,24,18,.62); display: none; align-items: center; justify-content: center; padding: 16px; z-index: 50; }
+.voile.visible { display: flex; }
+.dialogue {
+  background: var(--carte); border-radius: 24px; width: min(460px, 100%); padding: 28px 24px 20px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.35);
+  animation: entrer .25s ease-out;
+}
+.dialogue svg.mascotte { width: 128px; height: 128px; }
+.dialogue h2 { font-family: var(--police-titre); font-size: 1.5rem; line-height: 1.25; margin: 8px 0; }
+.dialogue p { color: var(--encre-douce); margin: 0 0 16px; min-height: 76px; }
+.points { display: flex; gap: 8px; justify-content: center; margin-bottom: 18px; }
+.points i { width: 8px; height: 8px; border-radius: 50%; background: var(--ligne); transition: width .2s, background-color .2s; }
+.points i.on { width: 26px; border-radius: 4px; background: var(--orange-600); }
+.actions { display: flex; gap: 10px; justify-content: space-between; align-items: center; }
+.lien { background: none; border: 0; min-height: 44px; padding: 0 8px; color: var(--encre-douce); text-decoration: underline; }
+.mascotte { --vague: paused; }
+.mascotte.vague { --vague: running; }
+.aile-g { transform-origin: 20px 62px; animation: salut 1.2s ease-in-out infinite; animation-play-state: var(--vague, paused); }
+@keyframes salut { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-24deg); } }
+
+/* ---------- Mobile : navigation en bas ---------- */
+@media (max-width: 720px) {
+  .app { height: 100dvh; }
+  .entete { padding: 10px 16px; }
+  .drapeau { display: none; }
+  .principal { padding: 0 12px 8px; }
+  .onglets {
+    order: 3; position: static; padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); gap: 2px; justify-content: space-around;
+    background: var(--carte); border-top: 1px solid var(--ligne);
+  }
+  .onglet { flex-direction: column; gap: 2px; font-size: .74rem; padding: 6px 10px; border-radius: 12px; flex: 1; justify-content: center; }
+  .fil { padding: 14px; }
+  .entete .texte-btn { display: none; }
+  .bulle { max-width: 92%; }
+  .msg .avatar { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+</style>
+</head>
+<body>
+
+<!-- ===== Bibliothèque d'icônes et mascotte ===== -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></symbol>
+    <symbol id="i-grille" viewBox="0 0 24 24"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></symbol>
+    <symbol id="i-livre" viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2V5z"/><path d="M8 7h7M8 11h5"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 7.6v.1"/></symbol>
+    <symbol id="i-envoi" viewBox="0 0 24 24"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7z"/></symbol>
+    <symbol id="i-fermer" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-lune" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5z"/></symbol>
+    <symbol id="i-aide" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.4a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1.1.9-1.1 1.7M12 16.8v.1"/></symbol>
+    <symbol id="i-doc" viewBox="0 0 24 24"><path d="M6 3h8l5 5v13H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/></symbol>
+    <symbol id="i-famille" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.2A5 5 0 0 1 21 19"/></symbol>
+    <symbol id="i-travail" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18"/></symbol>
+    <symbol id="i-maison" viewBox="0 0 24 24"><path d="M3 11 12 3l9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
+    <symbol id="i-entreprise" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="1"/><path d="M9 8h2M13 8h2M9 12h2M13 12h2M10 21v-4h4v4"/></symbol>
+    <symbol id="i-balance" viewBox="0 0 24 24"><path d="M12 3v18M6 21h12M5 7h14"/><path d="m5 7-3 7a3 3 0 0 0 6 0zM19 7l-3 7a3 3 0 0 0 6 0z"/></symbol>
+    <symbol id="i-panier" viewBox="0 0 24 24"><path d="M3 4h2l2.4 11h10.2l2-8H6.2"/><circle cx="9" cy="20" r="1.3"/><circle cx="17" cy="20" r="1.3"/></symbol>
+    <symbol id="i-identite" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M6.5 16a3 3 0 0 1 5 0M14 10h4M14 14h4"/></symbol>
+    <symbol id="i-bouclier" viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-micro" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/></symbol>
+    <symbol id="i-hautparleur" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"/></symbol>
+
+    <!-- Mascotte originale : Maître Hibou -->
+    <symbol id="mascotte" viewBox="0 0 120 120">
+      <path d="M30 24 38 40 52 34zM90 24 82 40 68 34z" fill="#0b3d2e"/>
+      <ellipse cx="60" cy="68" rx="38" ry="44" fill="#11634a"/>
+      <ellipse cx="60" cy="78" rx="24" ry="30" fill="#f6ecd6"/>
+      <path d="M46 70q4 6 8 0M58 70q4 6 8 0M50 82q4 6 8 0M62 82q4 6 8 0" fill="none" stroke="#e0cfa8" stroke-width="2" stroke-linecap="round"/>
+      <g class="aile-g"><path d="M24 62C14 74 16 96 28 100 34 90 34 74 28 62z" fill="#0b3d2e"/></g>
+      <path d="M96 62c10 12 8 34-4 38-6-10-6-26 0-38z" fill="#0b3d2e"/>
+      <circle cx="44" cy="52" r="15" fill="#fff"/><circle cx="76" cy="52" r="15" fill="#fff"/>
+      <circle cx="44" cy="52" r="15" fill="none" stroke="#ee7d1a" stroke-width="3"/><circle cx="76" cy="52" r="15" fill="none" stroke="#ee7d1a" stroke-width="3"/>
+      <circle cx="46" cy="53" r="7" fill="#1c2a24"/><circle cx="74" cy="53" r="7" fill="#1c2a24"/>
+      <circle cx="48.5" cy="50.5" r="2.4" fill="#fff"/><circle cx="76.5" cy="50.5" r="2.4" fill="#fff"/>
+      <path d="M54 62h12l-6 12z" fill="#ee7d1a"/>
+      <path d="M40 106l-6 6M50 108l-3 7M70 108l3 7M80 106l6 6" stroke="#ee7d1a" stroke-width="3" stroke-linecap="round"/>
+      <!-- toque de juge -->
+      <path d="M36 28h48l-4-10H40z" fill="#1c2a24"/><rect x="34" y="27" width="52" height="5" rx="2" fill="#ee7d1a"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="app">
+  <header class="entete">
+    <div class="logo">
+      <svg class="mascotte" aria-hidden="true"><use href="#mascotte"/></svg>
+      <span class="logo-texte">Juris<b>IA</b></span>
+      <span class="drapeau" aria-hidden="true"><i></i><i></i><i></i></span>
+    </div>
+    <span class="espace"></span>
+    <button class="btn-icone" id="btn-lecture-auto" type="button" aria-pressed="false" aria-label="Lire les réponses à voix haute automatiquement" title="Lire les réponses à voix haute automatiquement">
+      <svg class="ico"><use href="#i-hautparleur"/></svg><span class="texte-btn">Lecture auto</span>
+    </button>
+    <button class="btn-icone" id="btn-tour" type="button" aria-label="Revoir le tour guidé">
+      <svg class="ico"><use href="#i-aide"/></svg><span class="texte-btn">Aide</span>
+    </button>
+  </header>
+
+  <nav class="onglets" role="tablist" aria-label="Sections de JurisIA">
+    <button class="onglet" role="tab" id="t-chat" aria-controls="p-chat" aria-selected="true" data-onglet="chat"><svg class="ico"><use href="#i-chat"/></svg>Assistant</button>
+    <button class="onglet" role="tab" id="t-themes" aria-controls="p-themes" aria-selected="false" tabindex="-1" data-onglet="themes"><svg class="ico"><use href="#i-grille"/></svg>Thèmes</button>
+    <button class="onglet" role="tab" id="t-reperes" aria-controls="p-reperes" aria-selected="false" tabindex="-1" data-onglet="reperes"><svg class="ico"><use href="#i-livre"/></svg>Repères</button>
+    <button class="onglet" role="tab" id="t-apropos" aria-controls="p-apropos" aria-selected="false" tabindex="-1" data-onglet="apropos"><svg class="ico"><use href="#i-info"/></svg>À propos</button>
+  </nav>
+
+  <main class="principal">
+
+    <!-- ===== ASSISTANT (base du site) ===== -->
+    <section class="panneau actif" id="p-chat" role="tabpanel" aria-labelledby="t-chat">
+      <div class="chat-carte">
+        <div class="fil" id="fil" role="log" aria-live="polite" aria-label="Conversation">
+          <div class="accueil" id="accueil">
+            <svg class="mascotte" aria-hidden="true"><use href="#mascotte"/></svg>
+            <h1>Bonjour, je suis Maître Hibou.</h1>
+            <p>Pose-moi ta question sur le droit ivoirien avec tes mots. Je cherche dans les textes de loi et je t'explique simplement.</p>
+            <div class="pastilles" id="pastilles-depart"></div>
+          </div>
+        </div>
+        <div class="composeur">
+          <div class="theme-actif" id="theme-actif">
+            <span id="theme-actif-nom"></span>
+            <button type="button" id="theme-retirer" aria-label="Retirer le thème"><svg class="ico" style="width:16px;height:16px"><use href="#i-fermer"/></svg></button>
+          </div>
+          <div class="etat-voix" id="etat-voix" role="status" aria-live="polite"></div>
+          <form class="ligne-saisie" id="formulaire" autocomplete="off">
+            <label for="saisie" class="sr-only">Ta question juridique</label>
+            <textarea id="saisie" rows="1" placeholder="Écris ou dicte ta question ici…" maxlength="1500"></textarea>
+            <button class="micro" id="micro" type="button" aria-pressed="false" aria-label="Parler au lieu d'écrire" title="Dicter ta question"><svg class="ico"><use href="#i-micro"/></svg></button>
+            <button class="envoyer" id="envoyer" type="submit" aria-label="Envoyer la question"><svg class="ico"><use href="#i-envoi"/></svg></button>
+          </form>
+          <p class="mention">JurisIA donne des informations générales, pas un avis juridique. Pour une décision importante, consulte un avocat ou un juriste.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== THÈMES ===== -->
+    <section class="panneau" id="p-themes" role="tabpanel" aria-labelledby="t-themes" hidden>
+      <div class="defile">
+        <h2 class="titre-section">Explorer par thème</h2>
+        <p class="sous-titre">Choisis un domaine : l'assistant se concentre dessus et te propose des questions pour démarrer.</p>
+        <div class="grille" id="grille-themes"></div>
+      </div>
+    </section>
+
+    <!-- ===== REPÈRES ===== -->
+    <section class="panneau" id="p-reperes" role="tabpanel" aria-labelledby="t-reperes" hidden>
+      <div class="defile">
+        <h2 class="titre-section">Repères pratiques</h2>
+        <p class="sous-titre">Des réflexes simples pour les situations courantes. Ce sont des repères généraux : demande à l'assistant pour les textes précis.</p>
+        <div class="accordeon" id="accordeon"></div>
+      </div>
+    </section>
+
+    <!-- ===== À PROPOS ===== -->
+    <section class="panneau" id="p-apropos" role="tabpanel" aria-labelledby="t-apropos" hidden>
+      <div class="defile">
+        <div class="apropos">
+          <h2 class="titre-section">À propos de JurisIA</h2>
+          <p class="sous-titre">Un projet pour rendre le droit ivoirien compréhensible par tous.</p>
+          <h3>Comment ça marche</h3>
+          <ol class="etapes">
+            <li><span>Tu poses ta question avec tes propres mots.</span></li>
+            <li><span>JurisIA cherche les passages les plus proches dans la base de textes juridiques ivoiriens.</span></li>
+            <li><span>Il t'explique la réponse en s'appuyant uniquement sur ces extraits et cite ses sources.</span></li>
+          </ol>
+          <div class="encadre">
+            <strong>À savoir.</strong> JurisIA peut se tromper ou ne pas avoir le texte le plus récent. Vérifie toujours la source citée, et fais-toi accompagner par un avocat, un huissier ou un notaire pour toute décision importante.
+          </div>
+          <button class="btn-secondaire" id="rejouer" type="button">Revoir le tour guidé</button>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- ===== ONBOARDING ===== -->
+<div class="voile" id="voile" role="dialog" aria-modal="true" aria-labelledby="ob-titre">
+  <div class="dialogue">
+    <svg class="mascotte vague" id="ob-mascotte" aria-hidden="true"><use href="#mascotte"/></svg>
+    <h2 id="ob-titre"></h2>
+    <p id="ob-texte"></p>
+    <div class="points" id="ob-points" aria-hidden="true"></div>
+    <div class="actions">
+      <button class="lien" id="ob-passer" type="button">Passer</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn-secondaire" id="ob-prec" type="button">Retour</button>
+        <button class="btn-principal" id="ob-suiv" type="button">Suivant</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- Données ---------- */
+  var THEMES = [
+    { id: "famille", nom: "Famille et mariage", ico: "i-famille", desc: "Mariage, divorce, garde des enfants, pension, héritage.",
+      questions: ["Quelles sont les conditions pour se marier ?", "Comment fonctionne la garde des enfants après un divorce ?", "Qui hérite quand une personne décède ?"] },
+    { id: "travail", nom: "Travail", ico: "i-travail", desc: "Contrat, salaire, congés, licenciement, démission.",
+      questions: ["Quels sont mes droits en cas de licenciement ?", "Combien de congés ai-je droit par an ?", "Mon employeur peut-il baisser mon salaire ?"] },
+    { id: "foncier", nom: "Terrain et logement", ico: "i-maison", desc: "Achat de terrain, titre foncier, bail, loyer, expulsion.",
+      questions: ["Comment vérifier qu'un terrain est bien à vendre ?", "Un propriétaire peut-il m'expulser du jour au lendemain ?", "Quels documents prouvent qu'un terrain m'appartient ?"] },
+    { id: "entreprise", nom: "Entreprise et commerce", ico: "i-entreprise", desc: "Créer une société, statuts, associés, obligations.",
+      questions: ["Quelle est la procédure pour créer une SARL ?", "Quelle différence entre entreprise individuelle et société ?", "Quelles sont les obligations d'un commerçant ?"] },
+    { id: "penal", nom: "Pénal et sécurité", ico: "i-balance", desc: "Plainte, garde à vue, infractions, droits de la défense.",
+      questions: ["Quels sont mes droits en garde à vue ?", "Comment déposer une plainte ?", "Quelle est la différence entre délit et crime ?"] },
+    { id: "consommation", nom: "Contrats et consommation", ico: "i-panier", desc: "Achat, garantie, dette, contrat signé, arnaque.",
+      questions: ["Un contrat verbal est-il valable ?", "Que faire si un vendeur refuse de me rembourser ?", "Puis-je annuler un contrat que j'ai signé ?"] },
+    { id: "etatcivil", nom: "État civil et identité", ico: "i-identite", desc: "Acte de naissance, nationalité, nom, papiers d'identité.",
+      questions: ["Comment obtenir un acte de naissance ?", "Que faire si je n'ai jamais été déclaré à la naissance ?", "Comment changer de nom ?"] },
+    { id: "droits", nom: "Droits et libertés", ico: "i-bouclier", desc: "Constitution, libertés fondamentales, recours.",
+      questions: ["Quels sont mes droits fondamentaux ?", "Que dit la Constitution sur la liberté d'expression ?", "Comment contester une décision de l'administration ?"] }
+  ];
+
+  var REPERES = [
+    { ico: "i-travail", titre: "J'ai un problème avec mon employeur", theme: "travail",
+      points: ["Garde tes preuves : contrat, bulletins de paie, messages, convocations.", "Essaie d'abord de régler par écrit avec ton employeur.", "En cas de blocage, l'inspection du travail puis le tribunal du travail peuvent être saisis."],
+      q: "Que faire si mon employeur ne respecte pas mon contrat de travail ?" },
+    { ico: "i-entreprise", titre: "Je veux créer mon entreprise", theme: "entreprise",
+      points: ["Choisis la forme qui te convient : entreprise individuelle ou société (par exemple SARL).", "Le droit des affaires en Côte d'Ivoire suit en grande partie les règles de l'OHADA.", "Renseigne-toi sur le guichet unique de création d'entreprise et sur l'immatriculation au registre du commerce."],
+      q: "Quelles sont les étapes pour créer une entreprise en Côte d'Ivoire ?" },
+    { ico: "i-maison", titre: "Je veux acheter un terrain", theme: "foncier",
+      points: ["Demande les documents qui prouvent les droits du vendeur et vérifie-les.", "Fais-toi accompagner d'un notaire ou d'un professionnel du foncier avant de payer.", "Ne verse jamais d'argent sans écrit signé."],
+      q: "Quelles vérifications faire avant d'acheter un terrain ?" },
+    { ico: "i-balance", titre: "Je veux porter plainte", theme: "penal",
+      points: ["Tu peux t'adresser à un commissariat, une gendarmerie ou au procureur.", "Demande un document qui atteste de ta démarche.", "Conserve photos, messages, certificats et noms des témoins."],
+      q: "Comment porter plainte et que se passe-t-il ensuite ?" },
+    { ico: "i-identite", titre: "Il me manque un acte de naissance", theme: "etatcivil",
+      points: ["Rends-toi au centre d'état civil ou à la mairie du lieu de naissance.", "Si la naissance n'a jamais été déclarée, une procédure judiciaire existe pour régulariser.", "Prépare les documents des parents et des témoins si tu en as."],
+      q: "Comment régulariser une naissance non déclarée ?" },
+    { ico: "i-panier", titre: "Un vendeur ne respecte pas sa parole", theme: "consommation",
+      points: ["Garde la facture, le reçu et toute preuve de l'échange.", "Envoie une réclamation écrite et précise ce que tu demandes.", "Si rien ne bouge, demande conseil avant d'aller plus loin."],
+      q: "Que faire si un vendeur refuse de me rembourser ou de réparer ?" }
+  ];
+
+  var ETAPES = [
+    { t: "Bienvenue sur JurisIA", p: "Je suis Maître Hibou. Je t'aide à comprendre le droit ivoirien avec des mots simples, sans jargon." },
+    { t: "Pose ta question comme tu parles", p: "Pas besoin de connaître les articles de loi. Écris ta situation et je cherche les textes qui s'y appliquent." },
+    { t: "Explore par thème", p: "Famille, travail, terrain, entreprise… L'onglet Thèmes te propose des questions toutes prêtes pour démarrer." },
+    { t: "Tu peux aussi me parler", p: "Appuie sur le micro pour dicter ta question, puis sur « Écouter » pour entendre ma réponse. La dictée marche surtout sur Chrome et Edge, avec internet." },
+    { t: "Je ne remplace pas un avocat", p: "Mes réponses citent leurs sources pour que tu puisses vérifier. Pour une décision importante, fais-toi accompagner par un professionnel." }
+  ];
+
+  /* ---------- Utilitaires ---------- */
+  function $(id) { return document.getElementById(id); }
+  function echapper(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+  function icone(id, taille) { return '<svg class="ico"' + (taille ? ' style="width:' + taille + 'px;height:' + taille + 'px"' : "") + ' aria-hidden="true"><use href="#' + id + '"/></svg>'; }
+  function lire(cle) { try { return window.localStorage.getItem(cle); } catch (e) { return null; } }
+  function ecrire(cle, val) { try { window.localStorage.setItem(cle, val); } catch (e) { /* stockage indisponible */ } }
+
+  function formater(texte) {
+    var lignes = echapper(texte).split(/\r?\n/);
+    var html = "", liste = null;
+    function fermer() { if (liste) { html += "</" + liste + ">"; liste = null; } }
+    lignes.forEach(function (l) {
+      var gras = function (s) { return s.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>"); };
+      var m;
+      if ((m = l.match(/^\s*[-*•]\s+(.*)/))) {
+        if (liste !== "ul") { fermer(); html += "<ul>"; liste = "ul"; }
+        html += "<li>" + gras(m[1]) + "</li>";
+      } else if ((m = l.match(/^\s*\d+[.)]\s+(.*)/))) {
+        if (liste !== "ol") { fermer(); html += "<ol>"; liste = "ol"; }
+        html += "<li>" + gras(m[1]) + "</li>";
+      } else if (l.trim() === "") {
+        fermer();
+      } else {
+        fermer();
+        html += "<p>" + gras(l.replace(/^#{1,4}\s*/, "")) + "</p>";
+      }
+    });
+    fermer();
+    return html;
+  }
+
+  function nomSource(s) {
+    return s.replace(/\.pdf$/i, "").replace(/[_]+/g, " ").replace(/\s+/g, " ").trim();
+  }
+
+  /* ---------- Onglets ---------- */
+  var ordre = ["chat", "themes", "reperes", "apropos"];
+  function aller(nom, focus) {
+    ordre.forEach(function (n) {
+      var actif = n === nom;
+      var tab = $("t-" + n), pan = $("p-" + n);
+      tab.setAttribute("aria-selected", actif ? "true" : "false");
+      tab.tabIndex = actif ? 0 : -1;
+      pan.hidden = !actif;
+      pan.classList.toggle("actif", actif);
+    });
+    if (focus) $("t-" + nom).focus();
+    if (nom === "chat") setTimeout(function () { $("saisie").focus(); }, 50);
+  }
+  ordre.forEach(function (n, i) {
+    $("t-" + n).addEventListener("click", function () { aller(n); });
+    $("t-" + n).addEventListener("keydown", function (e) {
+      var d = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+      if (d) { e.preventDefault(); aller(ordre[(i + d + ordre.length) % ordre.length], true); }
+    });
+  });
+
+  /* ---------- Thème actif ---------- */
+  var themeCourant = null;
+  function definirTheme(t) {
+    themeCourant = t;
+    $("theme-actif").classList.toggle("visible", !!t);
+    $("theme-actif-nom").textContent = t ? "Thème : " + t.nom : "";
+    remplirPastilles();
+  }
+  $("theme-retirer").addEventListener("click", function () { definirTheme(null); $("saisie").focus(); });
+
+  var QUESTIONS_DEFAUT = [
+    "Quelles sont les conditions pour se marier ?",
+    "Quels sont mes droits en cas de licenciement ?",
+    "Comment créer une SARL ?",
+    "Comment obtenir un acte de naissance ?"
+  ];
+  function remplirPastilles() {
+    var zone = $("pastilles-depart");
+    if (!zone) return;
+    var qs = themeCourant ? themeCourant.questions : QUESTIONS_DEFAUT;
+    zone.innerHTML = "";
+    qs.forEach(function (q) {
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "pastille"; b.textContent = q;
+      b.addEventListener("click", function () { envoyer(q); });
+      zone.appendChild(b);
+    });
+  }
+
+  /* ---------- Grille des thèmes ---------- */
+  THEMES.forEach(function (t) {
+    var b = document.createElement("button");
+    b.type = "button"; b.className = "carte-theme";
+    b.innerHTML = '<span class="pastille-ico">' + icone(t.ico, 26) + "</span><h3>" + echapper(t.nom) + "</h3><p>" + echapper(t.desc) + '</p><span class="aller">Poser une question →</span>';
+    b.addEventListener("click", function () { definirTheme(t); aller("chat"); });
+    $("grille-themes").appendChild(b);
+  });
+
+  /* ---------- Repères ---------- */
+  REPERES.forEach(function (r) {
+    var d = document.createElement("details");
+    d.className = "repere";
+    d.innerHTML = '<summary>' + icone(r.ico) + "<span>" + echapper(r.titre) + '</span></summary><div class="repere-corps"><ul>' +
+      r.points.map(function (p) { return "<li>" + echapper(p) + "</li>"; }).join("") +
+      '</ul><button type="button" class="btn-secondaire">Demander à JurisIA</button></div>';
+    d.querySelector("button").addEventListener("click", function () {
+      var t = THEMES.filter(function (x) { return x.id === r.theme; })[0] || null;
+      definirTheme(t); aller("chat"); envoyer(r.q);
+    });
+    $("accordeon").appendChild(d);
+  });
+
+  /* ---------- Chat ---------- */
+  var historique = [];
+  var enCours = false;
+  var fil = $("fil"), saisie = $("saisie"), btnEnvoyer = $("envoyer");
+
+  function faireDefiler() { fil.scrollTop = fil.scrollHeight; }
+
+  function ajouterMessage(role, contenuHtml, extra) {
+    var accueil = $("accueil");
+    if (accueil) accueil.remove();
+    var div = document.createElement("div");
+    div.className = "msg " + (role === "moi" ? "moi" : "bot") + (extra && extra.erreur ? " erreur" : "");
+    var avatar = role === "moi" ? "" : '<svg class="mascotte avatar" aria-hidden="true"><use href="#mascotte"/></svg>';
+    div.innerHTML = avatar + '<div class="bulle">' + contenuHtml + "</div>";
+    fil.appendChild(div);
+    faireDefiler();
+    return div;
+  }
+
+  async function envoyer(texte, parVoix) {
+    texte = (texte || "").trim();
+    if (!texte || enCours) return;
+    arreterParole();
+    enCours = true; btnEnvoyer.disabled = true; btnMicro.disabled = true;
+    ajouterMessage("moi", "<p>" + echapper(texte) + "</p>");
+    saisie.value = ""; ajuster();
+    var attente = ajouterMessage("bot", '<span class="point-attente" role="status" aria-label="JurisIA réfléchit"><i></i><i></i><i></i></span>');
+
+    try {
+      var rep = await fetch("/demander", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: texte, theme: themeCourant ? themeCourant.nom : "", historique: historique.slice(-6) })
+      });
+      var data = await rep.json();
+      attente.remove();
+      if (!rep.ok || data.erreur) throw new Error(data.erreur || "Erreur serveur");
+
+      var src = (data.sources || []).map(function (s) {
+        return '<span class="source" title="' + echapper(s) + '">' + icone("i-doc", 14) + "<span>" + echapper(nomSource(s)) + "</span></span>";
+      }).join("");
+      var html = formater(data.reponse || "");
+      if (src) {
+        html += '<div class="sources"><span>Sources :</span>' + src + "</div>";
+        html += '<div class="avertissement-bulle">Information générale, pas un avis juridique. Vérifie la source citée.</div>';
+      }
+      var msgBot = ajouterMessage("bot", html);
+      var btnEcoute = ajouterBoutonEcoute(msgBot, data.reponse || "");
+      if (parVoix || lectureAuto) parler(data.reponse || "", btnEcoute);
+      historique.push({ role: "user", content: texte }, { role: "assistant", content: data.reponse || "" });
+    } catch (e) {
+      attente.remove();
+      ajouterMessage("bot", "<p>Désolé, je n'ai pas pu répondre. Vérifie ta connexion et réessaie dans un instant.</p>", { erreur: true });
+    } finally {
+      enCours = false; btnEnvoyer.disabled = false; btnMicro.disabled = false; saisie.focus();
+    }
+  }
+
+  function ajuster() { saisie.style.height = "auto"; saisie.style.height = Math.min(saisie.scrollHeight, 140) + "px"; }
+  saisie.addEventListener("input", ajuster);
+  saisie.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyer(saisie.value); }
+  });
+  $("formulaire").addEventListener("submit", function (e) { e.preventDefault(); envoyer(saisie.value); });
+
+  /* ---------- Voix : dictée et lecture à voix haute ---------- */
+  var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  var synth = window.speechSynthesis;
+  var btnMicro = $("micro");
+  var btnAuto = $("btn-lecture-auto");
+  var etatVoix = $("etat-voix");
+  var mascotteEntete = document.querySelector(".logo svg.mascotte");
+  var lectureAuto = lire("jurisia_lecture_auto") === "1";
+  var minuteurEtat = null;
+
+  function ondeMascotte(on) { if (mascotteEntete) mascotteEntete.classList.toggle("vague", !!on); }
+
+  function afficherEtat(texte, temporaire, ecoute) {
+    clearTimeout(minuteurEtat);
+    etatVoix.textContent = texte || "";
+    etatVoix.classList.toggle("visible", !!texte);
+    etatVoix.classList.toggle("ecoute", !!ecoute);
+    if (texte && temporaire) minuteurEtat = setTimeout(function () { afficherEtat(""); }, 4500);
+  }
+
+  /* -- Lecture à voix haute -- */
+  var voixFr = null;
+  var jeton = 0;
+  var boutonLecture = null;
+
+  function choisirVoix() {
+    if (!synth) return;
+    var voix = synth.getVoices().filter(function (v) { return /^fr/i.test(v.lang); });
+    if (!voix.length) { voixFr = null; return; }
+    function score(v) {
+      var n = v.name.toLowerCase(), s = 0;
+      if (/natural|online|neural/.test(n)) s += 3;
+      if (/google/.test(n)) s += 2;
+      if (/^fr[-_]fr/i.test(v.lang)) s += 1;
+      return s;
+    }
+    voix.sort(function (a, b) { return score(b) - score(a); });
+    voixFr = voix[0];
+  }
+  if (synth) {
+    choisirVoix();
+    if (synth.addEventListener) synth.addEventListener("voiceschanged", choisirVoix);
+  }
+
+  function nettoyerPourLecture(t) {
+    return String(t)
+      .replace(/https?:\/\/\S+/g, " ")
+      .replace(/\*\*(.+?)\*\*/g, "$1")
+      .replace(/^\s*#{1,6}\s*/gm, "")
+      .replace(/^\s*[-*•]\s+/gm, "")
+      .replace(/\bArt\.\s*/g, "article ")
+      .replace(/\bn°\s*/gi, "numéro ")
+      .replace(/[*_`#>]/g, "")
+      .replace(/([.:;!?])[ \t]*\n+[ \t]*/g, "$1 ")
+      .replace(/[ \t]*\n+[ \t]*/g, ". ")
+      .replace(/\s{2,}/g, " ")
+      .trim();
+  }
+
+  function decouper(texte) {
+    var phrases = texte.match(/[^.!?;:]+[.!?;:]?\s*/g) || [texte];
+    var morceaux = [], cur = "";
+    phrases.forEach(function (p) {
+      if (cur && (cur + p).length > 180) { morceaux.push(cur.trim()); cur = p; } else { cur += p; }
+    });
+    if (cur.trim()) morceaux.push(cur.trim());
+    return morceaux;
+  }
+
+  function majBoutonLecture(bouton, actif) {
+    if (!bouton) return;
+    bouton.setAttribute("aria-pressed", actif ? "true" : "false");
+    bouton.innerHTML = icone(actif ? "i-stop" : "i-hautparleur", 18) + "<span>" + (actif ? "Arrêter" : "Écouter") + "</span>";
+  }
+
+  function arreterParole() {
+    jeton++;
+    if (synth) synth.cancel();
+    majBoutonLecture(boutonLecture, false);
+    boutonLecture = null;
+    ondeMascotte(false);
+  }
+
+  function parler(texte, bouton) {
+    if (!synth) { afficherEtat("Ton navigateur ne sait pas lire à voix haute.", true); return; }
+    arreterParole();
+    var propre = nettoyerPourLecture(texte);
+    if (!propre) return;
+    var morceaux = decouper(propre);
+    var monJeton = ++jeton;
+    boutonLecture = bouton || null;
+    majBoutonLecture(boutonLecture, true);
+    ondeMascotte(true);
+    morceaux.forEach(function (m, i) {
+      var u = new SpeechSynthesisUtterance(m);
+      u.lang = "fr-FR";
+      if (voixFr) u.voice = voixFr;
+      if (i === morceaux.length - 1) {
+        u.onend = u.onerror = function () {
+          if (monJeton !== jeton) return;
+          majBoutonLecture(boutonLecture, false);
+          boutonLecture = null;
+          ondeMascotte(false);
+        };
+      }
+      synth.speak(u);
+    });
+  }
+
+  function ajouterBoutonEcoute(div, texte) {
+    if (!synth || !texte) return null;
+    var zone = document.createElement("div");
+    zone.className = "actions-msg";
+    var b = document.createElement("button");
+    b.type = "button"; b.className = "btn-ecouter";
+    majBoutonLecture(b, false);
+    b.addEventListener("click", function () {
+      if (boutonLecture === b) arreterParole(); else parler(texte, b);
+    });
+    zone.appendChild(b);
+    div.querySelector(".bulle").appendChild(zone);
+    return b;
+  }
+
+  function majBtnAuto() {
+    btnAuto.setAttribute("aria-pressed", lectureAuto ? "true" : "false");
+  }
+  btnAuto.addEventListener("click", function () {
+    lectureAuto = !lectureAuto;
+    ecrire("jurisia_lecture_auto", lectureAuto ? "1" : "0");
+    majBtnAuto();
+    if (!lectureAuto) arreterParole();
+    afficherEtat(lectureAuto ? "Lecture automatique activée." : "Lecture automatique désactivée.", true);
+  });
+  majBtnAuto();
+  if (!synth) btnAuto.style.display = "none";
+
+  /* -- Dictée -- */
+  var reco = null, ecoute = false, annule = false, erreurAffichee = false, debutSaisie = "";
+
+  function majMicro(actif) {
+    ecoute = actif;
+    btnMicro.classList.toggle("ecoute", actif);
+    btnMicro.setAttribute("aria-pressed", actif ? "true" : "false");
+    btnMicro.setAttribute("aria-label", actif ? "Arrêter la dictée et envoyer" : "Parler au lieu d'écrire");
+    btnMicro.title = actif ? "Arrêter et envoyer" : "Dicter ta question";
+    ondeMascotte(actif);
+  }
+
+  var MESSAGES_ERREUR = {
+    "not-allowed": "Le micro est bloqué. Clique sur le cadenas à côté de l'adresse et autorise le micro.",
+    "service-not-allowed": "Le micro est bloqué. Clique sur le cadenas à côté de l'adresse et autorise le micro.",
+    "no-speech": "Je n'ai rien entendu. Réessaie en parlant plus près du micro.",
+    "audio-capture": "Aucun micro détecté sur cet appareil.",
+    "network": "La dictée vocale a besoin d'une connexion internet."
+  };
+
+  function demarrerDictee() {
+    if (!SR) { afficherEtat("La dictée vocale n'est pas disponible sur ce navigateur. Essaie avec Chrome ou Edge.", true); return; }
+    if (enCours) return;
+    arreterParole();
+    reco = new SR();
+    reco.lang = "fr-FR";
+    reco.interimResults = true;
+    reco.continuous = false;
+    reco.maxAlternatives = 1;
+    annule = false; erreurAffichee = false;
+    debutSaisie = saisie.value.trim();
+    var texteFinal = "";
+
+    reco.onstart = function () { majMicro(true); afficherEtat("Je t'écoute… parle maintenant.", false, true); };
+    reco.onresult = function (e) {
+      var provisoire = "";
+      for (var i = e.resultIndex; i < e.results.length; i++) {
+        var r = e.results[i];
+        if (r.isFinal) texteFinal += r[0].transcript + " "; else provisoire += r[0].transcript;
+      }
+      saisie.value = (debutSaisie + " " + texteFinal + provisoire).trim();
+      ajuster();
+    };
+    reco.onerror = function (e) {
+      annule = true;
+      if (e.error === "aborted") return;
+      erreurAffichee = true;
+      afficherEtat(MESSAGES_ERREUR[e.error] || "La dictée a échoué. Réessaie ou écris ta question.", true);
+    };
+    reco.onend = function () {
+      majMicro(false);
+      if (!erreurAffichee) afficherEtat("");
+      var t = saisie.value.trim();
+      if (!annule && t) envoyer(t, true);
+    };
+    try { reco.start(); } catch (err) { afficherEtat("Impossible de démarrer le micro. Réessaie.", true); }
+  }
+
+  btnMicro.addEventListener("click", function () {
+    if (ecoute && reco) reco.stop(); else demarrerDictee();
+  });
+  if (!SR) btnMicro.classList.add("indispo");
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Escape") return;
+    if (ecoute && reco) { annule = true; erreurAffichee = false; reco.abort(); }
+    else if (synth && synth.speaking) arreterParole();
+  });
+  window.addEventListener("pagehide", function () { if (synth) synth.cancel(); });
+
+  /* ---------- Onboarding ---------- */
+  var etape = 0;
+  var voile = $("voile");
+  var dernierFocus = null;
+
+  function afficherEtape() {
+    var e = ETAPES[etape];
+    $("ob-titre").textContent = e.t;
+    $("ob-texte").textContent = e.p;
+    $("ob-points").innerHTML = ETAPES.map(function (_, i) { return '<i class="' + (i === etape ? "on" : "") + '"></i>'; }).join("");
+    $("ob-prec").style.visibility = etape === 0 ? "hidden" : "visible";
+    $("ob-suiv").textContent = etape === ETAPES.length - 1 ? "C'est parti" : "Suivant";
+    $("ob-passer").style.visibility = etape === ETAPES.length - 1 ? "hidden" : "visible";
+    $("ob-mascotte").classList.toggle("vague", etape === 0);
+  }
+  function ouvrirTour() {
+    dernierFocus = document.activeElement; etape = 0; afficherEtape();
+    voile.classList.add("visible"); $("ob-suiv").focus();
+  }
+  function fermerTour() {
+    voile.classList.remove("visible"); ecrire("jurisia_tour_vu", "1");
+    if (dernierFocus && dernierFocus.focus) dernierFocus.focus(); else saisie.focus();
+  }
+  $("ob-suiv").addEventListener("click", function () { if (etape < ETAPES.length - 1) { etape++; afficherEtape(); } else fermerTour(); });
+  $("ob-prec").addEventListener("click", function () { if (etape > 0) { etape--; afficherEtape(); } });
+  $("ob-passer").addEventListener("click", fermerTour);
+  $("btn-tour").addEventListener("click", ouvrirTour);
+  $("rejouer").addEventListener("click", ouvrirTour);
+  voile.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") { fermerTour(); return; }
+    if (e.key === "Tab") {
+      var f = Array.prototype.filter.call(voile.querySelectorAll("button"), function (b) { return b.offsetParent !== null && getComputedStyle(b).visibility !== "hidden"; });
+      if (!f.length) return;
+      var premier = f[0], dernier = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === premier) { e.preventDefault(); dernier.focus(); }
+      else if (!e.shiftKey && document.activeElement === dernier) { e.preventDefault(); premier.focus(); }
+    }
+  });
+
+  /* ---------- Démarrage ---------- */
+  remplirPastilles();
+  if (!lire("jurisia_tour_vu")) ouvrirTour();
+})();
+</script>
+</body>
+</html>
