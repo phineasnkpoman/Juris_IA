@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: jurisia
+    runtime: python
+    plan: free
+    region: frankfurt
+    # Le modele ONNX est telecharge pendant la construction, pas au premier visiteur
+    buildCommand: pip install -r requirements.txt && python -c "from encodeur import Encodeur; Encodeur()"
+    startCommand: gunicorn -w 1 --threads 4 --timeout 120 -b 0.0.0.0:$PORT app:app
+    healthCheckPath: /
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      - key: HF_HOME
+        value: /opt/render/project/src/.cache

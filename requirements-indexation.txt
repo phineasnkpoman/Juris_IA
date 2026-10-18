@@ -1,0 +1,5 @@
+# Dependances pour reconstruire la base a partir des PDF (indexer.py puis exporter_index.py), en local seulement
+-r requirements.txt
+chromadb==1.5.9
+sentence-transformers==6.1.0
+pypdf==6.19.0

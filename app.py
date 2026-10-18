@@ -1,10 +1,12 @@
+import json
 import os
 import re
 
+import numpy as np
 from flask import Flask, render_template, request, jsonify
 from groq import Groq
-import chromadb
-from sentence_transformers import SentenceTransformer
+
+from encodeur import Encodeur
 
 # --- Configuration ---
 # La cle Groq est lue dans le fichier .env (jamais dans le code, pour ne pas la publier sur GitHub)
@@ -31,9 +33,11 @@ app = Flask(__name__)
 
 # --- Chargement des outils (une seule fois au demarrage) ---
 print("Chargement des outils...")
-embedder = SentenceTransformer("intfloat/multilingual-e5-base")
-client_chroma = chromadb.PersistentClient(path="./base_juridique")
-collection = client_chroma.get_collection(name="textes_ivoiriens")
+encodeur = Encodeur()
+# Index leger produit par exporter_index.py (vecteurs normalises + textes)
+vecteurs_index = np.load("index/embeddings.npy").astype(np.float32)
+with open("index/morceaux.json", encoding="utf-8") as f:
+    morceaux_index = json.load(f)
 # Les requetes partent directement chez Groq avec ta cle
 client = Groq(api_key=GROQ_KEY)
 
@@ -64,13 +68,11 @@ print("Pret !")
 
 def rechercher_contexte(question, theme="", n_resultats=5):
     requete = f"{theme} : {question}" if theme else question
-    embedding_question = embedder.encode(requete).tolist()
-    resultats = collection.query(
-        query_embeddings=[embedding_question],
-        n_results=n_resultats,
-    )
-    morceaux = resultats["documents"][0]
-    sources = [meta["source"] for meta in resultats["metadatas"][0]]
+    vecteur_question = encodeur.encoder([requete])[0]
+    # Vecteurs normalises : le produit scalaire est la similarite cosinus
+    meilleurs = np.argsort(-(vecteurs_index @ vecteur_question))[:n_resultats]
+    morceaux = [morceaux_index["documents"][i] for i in meilleurs]
+    sources = [morceaux_index["sources"][i] for i in meilleurs]
     return morceaux, sources
 
 
